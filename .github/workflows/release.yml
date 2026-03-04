@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal binary
+        run: |
+          swift build -c release --arch arm64
+          swift build -c release --arch x86_64
+          lipo -create \
+            .build/arm64-apple-macosx/release/TendiesApp \
+            .build/x86_64-apple-macosx/release/TendiesApp \
+            -output TendiesApp-universal
+          chmod +x TendiesApp-universal
+
+      - name: Bundle .app
+        run: bash scripts/bundle.sh TendiesApp-universal
+
+      - name: Zip .app
+        run: |
+          zip -r TendiesApp.zip TendiesApp.app
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          SHA=$(shasum -a 256 TendiesApp.zip | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TendiesApp.zip
+          generate_release_notes: true
+
+      - name: Update Homebrew Cask
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+          CASK_FILE="Casks/tendies-app.rb"
+
+          git clone https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/batjaa/homebrew-tools.git tap
+          cd tap
+
+          mkdir -p Casks
+          cat > "$CASK_FILE" <<EOF
+          cask "tendies-app" do
+            version "${VERSION}"
+            sha256 "${SHA}"
+
+            url "https://github.com/batjaa/tendies-app/releases/download/v#{version}/TendiesApp.zip"
+            name "TendiesApp"
+            desc "macOS menu bar app for tracking day trading P&L"
+            homepage "https://github.com/batjaa/tendies-app"
+
+            app "TendiesApp.app"
+          end
+          EOF
+
+          # Remove leading whitespace from heredoc indentation
+          sed -i '' 's/^          //' "$CASK_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CASK_FILE"
+          git commit -m "Update tendies-app to ${VERSION}"
+          git push

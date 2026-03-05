@@ -1,13 +1,15 @@
 import Foundation
 
 struct TendiesOutput: Codable {
-    let timeframes: [Timeframe]
+    var timeframes: [Timeframe]
     let accounts: [String]
+    let accountIDs: [String]
     let warnings: [String]
     let updatedAt: String
 
     enum CodingKeys: String, CodingKey {
         case timeframes, accounts, warnings
+        case accountIDs = "account_ids"
         case updatedAt = "updated_at"
     }
 }

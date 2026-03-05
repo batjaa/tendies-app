@@ -155,7 +155,7 @@ struct CLIRunner {
 
     // MARK: - Private
 
-    private static func parseResult(
+    static func parseResult(
         status: Int32,
         reason: Process.TerminationReason,
         stdout: Data,

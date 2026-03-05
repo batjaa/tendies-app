@@ -29,7 +29,7 @@ func formatPnLCompact(_ value: Double) -> String {
     }
 }
 
-private func formatWholeNumber(_ n: Int) -> String {
+func formatWholeNumber(_ n: Int) -> String {
     let s = String(n)
     guard s.count > 3 else { return s }
     var result = ""
@@ -77,4 +77,27 @@ func formatQuantity(_ qty: Double, type: String) -> String {
         return "\(intQty)sh"
     }
     return "\(intQty)"
+}
+
+// MARK: - Menu Bar Label
+
+func formatMenuBarLabel(_ net: Double) -> String {
+    let absVal = abs(net)
+    let formatted: String
+
+    if absVal >= 1_000_000 {
+        formatted = "$\(String(format: "%.1f", absVal / 1_000_000))M"
+    } else if absVal >= 10_000 {
+        formatted = "$\(String(format: "%.1f", absVal / 1_000))K"
+    } else {
+        formatted = "$\(formatWholeNumber(Int(absVal)))"
+    }
+
+    if net > 0 {
+        return "▲ +\(formatted)"
+    } else if net < 0 {
+        return "▼ -\(formatted)"
+    } else {
+        return "● $0"
+    }
 }

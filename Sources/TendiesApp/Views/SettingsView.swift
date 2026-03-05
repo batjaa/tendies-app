@@ -5,6 +5,7 @@ struct SettingsView: View {
     let onBack: () -> Void
 
     @State private var pendingSymbols: String = ""
+    @State private var isBackHovered = false
     private let allTimeframes = ["Day", "Week", "Month"]
 
     var body: some View {
@@ -21,7 +22,8 @@ struct SettingsView: View {
                 }
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(isBackHovered ? .primary : .secondary)
+            .onHover { hovering in isBackHovered = hovering }
             .padding(.bottom, 12)
 
             // DISPLAY section
@@ -99,6 +101,10 @@ struct SettingsView: View {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 5))
                     .frame(maxWidth: 150)
+                    .onChange(of: pendingSymbols) { _, newValue in
+                        let uppercased = newValue.uppercased()
+                        if uppercased != newValue { pendingSymbols = uppercased }
+                    }
                     .onSubmit { applySymbolFilter() }
                     .onAppear { pendingSymbols = appState.symbols }
             }
@@ -127,6 +133,7 @@ struct SettingsView: View {
         let trimmed = pendingSymbols.trimmingCharacters(in: .whitespaces)
         guard trimmed != appState.symbols else { return }
         appState.symbols = trimmed
+        appState.persistSettings()
         Task { await appState.refresh() }
     }
 
@@ -138,6 +145,7 @@ struct SettingsView: View {
             appState.enabledTimeframes.append(tf)
             appState.enabledTimeframes.sort { allTimeframes.firstIndex(of: $0)! < allTimeframes.firstIndex(of: $1)! }
         }
+        appState.persistSettings()
         Task { await appState.refresh() }
     }
 

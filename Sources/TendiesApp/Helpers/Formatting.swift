@@ -60,6 +60,17 @@ func formatTradeTime(_ isoString: String) -> String {
     return isoString
 }
 
+// MARK: - Side Formatting
+
+/// Converts instruction like "BUY_TO_OPEN" to a short label for matched opens.
+func formatSideShort(_ side: String) -> String {
+    switch side {
+    case "BUY", "BUY_TO_OPEN": return "bought"
+    case "SELL", "SELL_TO_OPEN": return "sold"
+    default: return "opened"
+    }
+}
+
 func formatQuantity(_ qty: Double, type: String) -> String {
     let intQty = Int(qty)
     if type == "equity" {

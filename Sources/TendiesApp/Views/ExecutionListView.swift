@@ -26,7 +26,8 @@ struct ExecutionListView: View {
                 // Matched opening legs.
                 ForEach(Array(close.matchedOpens.enumerated()), id: \.offset) { idx, open in
                     let connector = idx == close.matchedOpens.count - 1 ? "└" : "├"
-                    Text("\(connector) opened \(formatTradeTime(open.time))  \(formatQuantity(open.quantity, type: tickerType)) @ $\(String(format: "%.2f", open.price))")
+                    let sideLabel = open.side.map { formatSideShort($0) } ?? "opened"
+                    Text("\(connector) \(sideLabel) \(formatTradeTime(open.time))  \(formatQuantity(open.quantity, type: tickerType)) @ $\(String(format: "%.2f", open.price))")
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 8)

@@ -61,6 +61,7 @@ struct CloseTrade: Codable {
 
 struct MatchedOpen: Codable {
     let time: String
+    let side: String?
     let quantity: Double
     let price: Double
 }

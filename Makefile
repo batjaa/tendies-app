@@ -1,4 +1,10 @@
-.PHONY: build bundle install clean
+.PHONY: dev build bundle install clean
+
+dev:
+	swift build
+	@mkdir -p TendiesApp.app/Contents/MacOS
+	cp .build/debug/TendiesApp TendiesApp.app/Contents/MacOS/TendiesApp
+	@echo "Updated TendiesApp.app with debug build"
 
 build:
 	swift build -c release

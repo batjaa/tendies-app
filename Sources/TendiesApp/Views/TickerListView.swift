@@ -19,6 +19,7 @@ struct TickerListView: View {
 struct TickerRowView: View {
     let ticker: Ticker
     @State private var isExpanded = false
+    @State private var isHovered = false
 
     private var hasCloses: Bool {
         ticker.closes != nil && !(ticker.closes?.isEmpty ?? true)
@@ -60,8 +61,11 @@ struct TickerRowView: View {
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 5)
+                .background(isHovered ? Color.primary.opacity(0.03) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)
+            .onHover { hovering in isHovered = hovering }
 
             if isExpanded, let closes = ticker.closes {
                 ExecutionListView(closes: closes, tickerType: ticker.type)

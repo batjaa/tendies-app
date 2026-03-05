@@ -4,6 +4,7 @@ struct TimeframeRowView: View {
     let timeframe: Timeframe
     let isExpanded: Bool
     let onTap: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: onTap) {
@@ -32,10 +33,11 @@ struct TimeframeRowView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(isExpanded ? Color.primary.opacity(0.05) : Color.clear)
+            .background(isExpanded ? Color.primary.opacity(0.05) : isHovered ? Color.primary.opacity(0.03) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+        .onHover { hovering in isHovered = hovering }
     }
 }
 

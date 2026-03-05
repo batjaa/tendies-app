@@ -74,6 +74,8 @@ final class AppState {
 
     func refresh() async {
         guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
 
         // In broker mode, ensure we have a valid token before calling CLI.
         if !direct {
@@ -109,9 +111,6 @@ final class AppState {
                 }
             }
         }
-
-        isLoading = true
-        defer { isLoading = false }
         logger.notice("Refreshing with timeframes=\(self.enabledTimeframes.joined(separator: ","))")
 
         // Build account filter: only pass if user has deselected some accounts.

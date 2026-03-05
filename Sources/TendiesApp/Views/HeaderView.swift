@@ -20,6 +20,7 @@ struct HeaderView: View {
                     .rotationEffect(.degrees(isSpinning ? 360 : 0))
             }
             .buttonStyle(.plain)
+            .focusable(false)
             .foregroundStyle(.secondary)
             .onChange(of: isLoading) { _, loading in
                 if loading {
@@ -37,6 +38,7 @@ struct HeaderView: View {
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
+            .focusable(false)
             .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)

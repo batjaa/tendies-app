@@ -1,9 +1,11 @@
 import SwiftUI
 
 struct LoadingView: View {
+    var timeframes: [String] = ["Day", "Week", "Month"]
+
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(["Day", "Week", "Month"], id: \.self) { label in
+            ForEach(timeframes, id: \.self) { label in
                 HStack(spacing: 0) {
                     Text("◌")
                         .font(.system(size: 8))

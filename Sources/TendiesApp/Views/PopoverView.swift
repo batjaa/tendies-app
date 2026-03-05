@@ -51,7 +51,8 @@ struct PopoverView: View {
         } else if let output = appState.output {
             timeframeList(output)
         } else {
-            LoadingView()
+            LoadingView(timeframes: appState.enabledTimeframes)
+                .padding(.horizontal, 8)
                 .padding(.vertical, 4)
         }
     }
@@ -115,23 +116,6 @@ struct PopoverView: View {
     }
 
     private var settingsPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(action: { showSettings = false }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 10, weight: .semibold))
-                    Text("Back")
-                        .font(.system(size: 12))
-                }
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-
-            Text("Settings coming in next update")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        SettingsView(appState: appState, onBack: { showSettings = false })
     }
 }

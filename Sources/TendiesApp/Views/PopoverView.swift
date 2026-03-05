@@ -33,6 +33,7 @@ struct PopoverView: View {
             )
         }
         .frame(width: 300)
+        .clipped()
     }
 
     @ViewBuilder
@@ -57,6 +58,14 @@ struct PopoverView: View {
 
     @ViewBuilder
     private func timeframeList(_ output: TendiesOutput) -> some View {
+        if appState.availableAccounts.count > 1 {
+            AccountBarView(
+                accounts: appState.availableAccounts,
+                selected: appState.selectedAccounts,
+                onToggle: { appState.toggleAccount($0) }
+            )
+        }
+
         VStack(spacing: 0) {
             ForEach(output.timeframes, id: \.label) { tf in
                 TimeframeRowView(
@@ -75,7 +84,7 @@ struct PopoverView: View {
 
                 if expandedTimeframe == tf.label {
                     TickerListView(tickers: tf.tickers)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.opacity)
                 }
             }
         }

@@ -14,6 +14,10 @@ final class AppState {
     var subscriptionStatus: SubscriptionStatus?
     var trialEndsAt: String?
 
+    // Account selection.
+    var availableAccounts: [String] = []
+    var selectedAccounts: Set<String> = []
+
     // Settings (defaults — will be backed by UserDefaults in Step 8).
     var refreshMinutes: Int = 1
     var menuBarTimeframe: String = "Day"
@@ -110,10 +114,18 @@ final class AppState {
         defer { isLoading = false }
         logger.notice("Refreshing with timeframes=\(self.enabledTimeframes.joined(separator: ","))")
 
+        // Build account filter: only pass if user has deselected some accounts.
+        let accountFilter: String? = if !selectedAccounts.isEmpty && selectedAccounts.count < availableAccounts.count {
+            selectedAccounts.joined(separator: ",")
+        } else {
+            nil
+        }
+
         let result = await CLIRunner.run(
             customPath: cliPath,
             direct: direct,
             symbols: symbols.isEmpty ? nil : symbols,
+            account: accountFilter,
             timeframes: enabledTimeframes
         )
 
@@ -122,6 +134,14 @@ final class AppState {
             self.output = data
             self.error = nil
             self.lastUpdated = Date()
+            // Update available accounts from CLI response.
+            if !data.accounts.isEmpty {
+                self.availableAccounts = data.accounts
+                // On first load, select all accounts.
+                if selectedAccounts.isEmpty {
+                    selectedAccounts = Set(data.accounts)
+                }
+            }
         case .failure(let err):
             self.error = err
         }
@@ -137,6 +157,17 @@ final class AppState {
         } catch {
             loginError = error.localizedDescription
         }
+    }
+
+    func toggleAccount(_ account: String) {
+        if selectedAccounts.contains(account) {
+            // Don't allow deselecting all.
+            guard selectedAccounts.count > 1 else { return }
+            selectedAccounts.remove(account)
+        } else {
+            selectedAccounts.insert(account)
+        }
+        Task { await refresh() }
     }
 
     func logout() {

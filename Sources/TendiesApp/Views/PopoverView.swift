@@ -5,6 +5,7 @@ struct PopoverView: View {
     @Bindable var appState: AppState
     @State private var expandedTimeframe: String?
     @State private var showSettings = false
+    @State private var eventMonitor: Any?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +35,8 @@ struct PopoverView: View {
         }
         .frame(width: 300)
         .clipped()
+        .onAppear { installKeyboardShortcuts() }
+        .onDisappear { removeKeyboardShortcuts() }
     }
 
     @ViewBuilder
@@ -73,6 +76,7 @@ struct PopoverView: View {
                     timeframe: tf,
                     isExpanded: expandedTimeframe == tf.label,
                     onTap: {
+                        guard tf.tradeCount > 0 else { return }
                         withAnimation(.easeInOut(duration: 0.15)) {
                             if expandedTimeframe == tf.label {
                                 expandedTimeframe = nil
@@ -117,5 +121,37 @@ struct PopoverView: View {
 
     private var settingsPlaceholder: some View {
         SettingsView(appState: appState, onBack: { showSettings = false })
+    }
+
+    private func installKeyboardShortcuts() {
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command) {
+                switch event.charactersIgnoringModifiers {
+                case "r":
+                    Task { await appState.refresh() }
+                    return nil
+                case "q":
+                    NSApplication.shared.terminate(nil)
+                    return nil
+                case ",":
+                    showSettings.toggle()
+                    return nil
+                default:
+                    break
+                }
+            }
+            if event.keyCode == 53 { // Esc
+                NSApp.keyWindow?.close()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func removeKeyboardShortcuts() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
     }
 }

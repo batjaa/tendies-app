@@ -25,6 +25,7 @@ final class AppState {
     var loginError: String?
     var subscriptionStatus: SubscriptionStatus?
     var trialEndsAt: String?
+    private var consecutiveErrors = 0
 
     // Account selection (labels for display, IDs for CLI filtering).
     var availableAccounts: [String] = []
@@ -131,8 +132,9 @@ final class AppState {
         return formatMenuBarLabel(tf.net) + suffix
     }
 
-    func refresh() async {
+    func refresh(manual: Bool = false) async {
         guard !isLoading else { return }
+        if manual { consecutiveErrors = 0 }
         isLoading = true
         defer { isLoading = false }
 
@@ -194,6 +196,11 @@ final class AppState {
             self.output = data
             self.error = nil
             self.lastUpdated = Date()
+            self.consecutiveErrors = 0
+            // Restart auto-refresh if it was stopped due to consecutive errors.
+            if manual && refreshTimer == nil {
+                restartTimer()
+            }
             // Update available accounts from CLI response (only on first load
             // to avoid shrinking the list when a filter is active).
             if !data.accounts.isEmpty && availableAccounts.isEmpty {
@@ -208,6 +215,11 @@ final class AppState {
             }
         case .failure(let err):
             self.error = err
+            consecutiveErrors += 1
+            if consecutiveErrors >= 3 {
+                logger.warning("3 consecutive errors — pausing auto-refresh")
+                stopAutoRefresh()
+            }
         }
     }
 
@@ -273,18 +285,22 @@ final class AppState {
         stopAutoRefresh()
         // Initial fetch.
         Task { await refresh() }
-        // Recurring timer.
-        let interval = TimeInterval(max(refreshMinutes, 1) * 60)
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { await self.refresh() }
-        }
+        restartTimer()
         observeSleepWake()
     }
 
     func stopAutoRefresh() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+    }
+
+    private func restartTimer() {
+        refreshTimer?.invalidate()
+        let interval = TimeInterval(max(refreshMinutes, 1) * 60)
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { await self.refresh() }
+        }
     }
 
     private func observeSleepWake() {
@@ -299,11 +315,7 @@ final class AppState {
             guard let self else { return }
             logger.notice("System woke — refreshing and restarting timer")
             Task { await self.refresh() }
-            let interval = TimeInterval(max(self.refreshMinutes, 1) * 60)
-            self.refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-                guard let self else { return }
-                Task { await self.refresh() }
-            }
+            self.restartTimer()
         }
     }
 }

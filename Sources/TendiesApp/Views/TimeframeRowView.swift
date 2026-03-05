@@ -6,14 +6,20 @@ struct TimeframeRowView: View {
     let onTap: () -> Void
     @State private var isHovered = false
 
+    private var isEmpty: Bool { timeframe.tradeCount == 0 }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 0) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-                    .frame(width: 16)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                if isEmpty {
+                    Color.clear.frame(width: 16)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 16)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
 
                 Text(timeframe.label)
                     .font(.system(size: 12.5, weight: .medium))
@@ -33,7 +39,7 @@ struct TimeframeRowView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(isExpanded ? Color.primary.opacity(0.05) : isHovered ? Color.primary.opacity(0.03) : Color.clear)
+            .background(isExpanded ? Color.primary.opacity(0.05) : isHovered && !isEmpty ? Color.primary.opacity(0.03) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)

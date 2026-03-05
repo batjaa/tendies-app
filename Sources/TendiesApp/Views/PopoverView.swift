@@ -11,7 +11,7 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             HeaderView(
                 isLoading: appState.isLoading,
-                onRefresh: { Task { await appState.refresh() } },
+                onRefresh: { Task { await appState.refresh(manual: true) } },
                 onSettings: { showSettings.toggle() }
             )
             Divider()
@@ -128,7 +128,7 @@ struct PopoverView: View {
             if event.modifierFlags.contains(.command) {
                 switch event.charactersIgnoringModifiers {
                 case "r":
-                    Task { await appState.refresh() }
+                    Task { await appState.refresh(manual: true) }
                     return nil
                 case "q":
                     NSApplication.shared.terminate(nil)

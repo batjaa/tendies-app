@@ -21,7 +21,24 @@ enum KeychainService {
     private static let account = "broker_token"
     private static let goKeyringPrefix = "go-keyring-base64:"
 
+    /// In-memory cache to avoid repeated Keychain prompts.
+    private static var cachedToken: KeychainToken?
+    private static var cacheLoaded = false
+
     static func loadToken() -> KeychainToken? {
+        if cacheLoaded { return cachedToken }
+        cachedToken = loadTokenFromKeychain()
+        cacheLoaded = true
+        return cachedToken
+    }
+
+    /// Force-reload from Keychain (e.g. after login or token refresh).
+    static func reloadToken() {
+        cachedToken = loadTokenFromKeychain()
+        cacheLoaded = true
+    }
+
+    private static func loadTokenFromKeychain() -> KeychainToken? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -86,6 +103,7 @@ enum KeychainService {
     }
 
     static func saveToken(_ token: KeychainToken) throws {
+        cachedToken = token
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .custom { date, encoder in
             var container = encoder.singleValueContainer()
@@ -130,6 +148,8 @@ enum KeychainService {
     }
 
     static func deleteToken() {
+        cachedToken = nil
+        cacheLoaded = false
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

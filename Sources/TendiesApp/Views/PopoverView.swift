@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PopoverView: View {
@@ -25,7 +26,10 @@ struct PopoverView: View {
                 lastUpdated: appState.lastUpdated,
                 isLoading: appState.isLoading,
                 isAuthenticated: appState.isAuthenticated,
-                onLogout: { appState.logout() }
+                subscriptionStatus: appState.subscriptionStatus,
+                trialEndsAt: appState.trialEndsAt,
+                onLogout: { appState.logout() },
+                onManageSubscription: { Task { await openPortal() } }
             )
         }
         .frame(width: 300)
@@ -39,8 +43,10 @@ struct PopoverView: View {
                 errorMessage: appState.loginError,
                 isLoading: appState.authService.isLoggingIn
             )
+        } else if appState.subscriptionStatus == .expired {
+            SubscriptionView(appState: appState)
         } else if let error = appState.error, appState.output == nil {
-            ErrorView(error: error)
+            ErrorView(error: error, appState: appState)
         } else if let output = appState.output {
             timeframeList(output)
         } else {
@@ -85,6 +91,17 @@ struct PopoverView: View {
                 .foregroundStyle(.tertiary)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 4)
+        }
+    }
+
+    private func openPortal() async {
+        do {
+            let urlString = try await appState.getPortalURL()
+            if let url = URL(string: urlString) {
+                NSWorkspace.shared.open(url)
+            }
+        } catch {
+            // Silently fail — not critical.
         }
     }
 

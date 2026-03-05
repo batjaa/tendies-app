@@ -11,6 +11,8 @@ final class AppState {
     var isLoading = false
     var lastUpdated: Date?
     var loginError: String?
+    var subscriptionStatus: SubscriptionStatus?
+    var trialEndsAt: String?
 
     // Settings (defaults — will be backed by UserDefaults in Step 8).
     var refreshMinutes: Int = 1
@@ -80,6 +82,28 @@ final class AppState {
                 self.error = .authExpired("Authentication error: \(error.localizedDescription)")
                 return
             }
+
+            // Check subscription status before running CLI.
+            if let token = KeychainService.loadToken() {
+                let config = TendiesConfig.load()
+                do {
+                    let info = try await SubscriptionService.fetchStatus(
+                        token: token.accessToken,
+                        brokerURL: config.resolvedBrokerURL
+                    )
+                    self.subscriptionStatus = info.status
+                    self.trialEndsAt = info.trialEndsAt
+
+                    if info.status == .expired {
+                        self.error = .subscriptionRequired("Your free trial has ended. Subscribe to continue.")
+                        return
+                    }
+                } catch {
+                    // If subscription check fails, log and proceed — the CLI will catch
+                    // subscription_required via the 403 middleware if applicable.
+                    logger.warning("Subscription check failed: \(error.localizedDescription)")
+                }
+            }
         }
 
         isLoading = true
@@ -121,7 +145,32 @@ final class AppState {
         error = nil
         lastUpdated = nil
         loginError = nil
+        subscriptionStatus = nil
+        trialEndsAt = nil
         stopAutoRefresh()
+    }
+
+    func getCheckoutURL(plan: String) async throws -> String {
+        guard let token = KeychainService.loadToken() else {
+            throw AuthError.notAuthenticated
+        }
+        let config = TendiesConfig.load()
+        return try await SubscriptionService.getCheckoutURL(
+            token: token.accessToken,
+            brokerURL: config.resolvedBrokerURL,
+            plan: plan
+        )
+    }
+
+    func getPortalURL() async throws -> String {
+        guard let token = KeychainService.loadToken() else {
+            throw AuthError.notAuthenticated
+        }
+        let config = TendiesConfig.load()
+        return try await SubscriptionService.getPortalURL(
+            token: token.accessToken,
+            brokerURL: config.resolvedBrokerURL
+        )
     }
 
     func startAutoRefresh() {

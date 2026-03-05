@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: "site.batjaa.tendies-app", category: "CLI
 enum AppError: Error, LocalizedError {
     case authExpired(String)
     case schwabTokenExpired(String)
+    case subscriptionRequired(String)
     case binaryNotFound
     case timeout
     case generic(String)
@@ -14,6 +15,7 @@ enum AppError: Error, LocalizedError {
         switch self {
         case .authExpired(let msg): return msg
         case .schwabTokenExpired(let msg): return msg
+        case .subscriptionRequired(let msg): return msg
         case .binaryNotFound: return "tendies CLI not found"
         case .timeout: return "CLI timed out after 30s"
         case .generic(let msg): return msg
@@ -176,6 +178,8 @@ struct CLIRunner {
                 return .failure(.authExpired(cliError.message))
             case "schwab_token_expired":
                 return .failure(.schwabTokenExpired(cliError.message))
+            case "subscription_required":
+                return .failure(.subscriptionRequired(cliError.message))
             default:
                 return .failure(.generic(cliError.message))
             }

@@ -2,11 +2,17 @@ import SwiftUI
 
 @main
 struct TendiesApp: App {
+    @State private var appState = AppState()
+
     var body: some Scene {
-        MenuBarExtra("Tendies", systemImage: "chart.line.uptrend.xyaxis") {
-            Text("▲ +$1,234").font(.headline)
-            Divider()
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+        MenuBarExtra {
+            PopoverView(appState: appState)
+        } label: {
+            Text(appState.menuBarLabel)
+                .onAppear {
+                    appState.startAutoRefresh()
+                }
         }
+        .menuBarExtraStyle(.window)
     }
 }

@@ -11,6 +11,11 @@ enum AppError: Error, LocalizedError {
     case timeout
     case generic(String)
 
+    var isSubscriptionRequired: Bool {
+        if case .subscriptionRequired = self { return true }
+        return false
+    }
+
     var errorDescription: String? {
         switch self {
         case .authExpired(let msg): return msg

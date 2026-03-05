@@ -43,7 +43,7 @@ struct PopoverView: View {
                 errorMessage: appState.loginError,
                 isLoading: appState.authService.isLoggingIn
             )
-        } else if appState.subscriptionStatus == .expired {
+        } else if appState.subscriptionStatus == .expired || appState.error?.isSubscriptionRequired == true {
             SubscriptionView(appState: appState)
         } else if let error = appState.error, appState.output == nil {
             ErrorView(error: error, appState: appState)

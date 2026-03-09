@@ -54,11 +54,13 @@ struct PopoverView: View {
         } else if let output = appState.output {
             timeframeList(output)
         } else {
-            LoadingView(timeframes: appState.enabledTimeframes)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+            // First load — no data yet, show full skeleton.
+            LoadingView()
         }
     }
+
+    /// Canonical display order for timeframes.
+    private static let timeframeOrder = ["Day", "Week", "Month"]
 
     @ViewBuilder
     private func timeframeList(_ output: TendiesOutput) -> some View {
@@ -71,25 +73,30 @@ struct PopoverView: View {
         }
 
         VStack(spacing: 0) {
-            ForEach(output.timeframes, id: \.label) { tf in
-                TimeframeRowView(
-                    timeframe: tf,
-                    isExpanded: expandedTimeframe == tf.label,
-                    onTap: {
-                        guard tf.tradeCount > 0 else { return }
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            if expandedTimeframe == tf.label {
-                                expandedTimeframe = nil
-                            } else {
-                                expandedTimeframe = tf.label
+            // Show all enabled timeframes in canonical order: loaded rows + skeleton for loading.
+            ForEach(appState.enabledTimeframes, id: \.self) { label in
+                if let tf = output.timeframes.first(where: { $0.label == label }) {
+                    TimeframeRowView(
+                        timeframe: tf,
+                        isExpanded: expandedTimeframe == tf.label,
+                        onTap: {
+                            guard tf.tradeCount > 0 else { return }
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                if expandedTimeframe == tf.label {
+                                    expandedTimeframe = nil
+                                } else {
+                                    expandedTimeframe = tf.label
+                                }
                             }
                         }
-                    }
-                )
+                    )
 
-                if expandedTimeframe == tf.label {
-                    TickerListView(tickers: tf.tickers)
-                        .transition(.opacity)
+                    if expandedTimeframe == tf.label {
+                        TickerListView(tickers: tf.tickers, sortOrder: appState.tickerSort)
+                            .transition(.opacity)
+                    }
+                } else if appState.loadingTimeframes.contains(label) {
+                    TimeframeLoadingRow(label: label)
                 }
             }
         }

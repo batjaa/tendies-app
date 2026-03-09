@@ -2,10 +2,18 @@ import SwiftUI
 
 struct TickerListView: View {
     let tickers: [Ticker]
+    var sortOrder: String = "az"
+
+    private var sortedTickers: [Ticker] {
+        if sortOrder == "pnl" {
+            return tickers.sorted { abs($0.net) > abs($1.net) }
+        }
+        return tickers
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(tickers, id: \.symbol) { ticker in
+            ForEach(sortedTickers, id: \.symbol) { ticker in
                 TickerRowView(ticker: ticker)
             }
         }

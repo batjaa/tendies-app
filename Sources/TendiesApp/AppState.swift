@@ -13,6 +13,7 @@ final class AppState {
         static let direct = "direct"
         static let symbols = "symbols"
         static let cliPath = "cliPath"
+        static let tickerSort = "tickerSort"
         static let selectedAccounts = "selectedAccounts"
         static let availableAccounts = "availableAccounts"
         static let accountIDsByLabel = "accountIDsByLabel"
@@ -21,6 +22,7 @@ final class AppState {
     var output: TendiesOutput?
     var error: AppError?
     var isLoading = false
+    var loadingTimeframes: Set<String> = []
     var lastUpdated: Date?
     var loginError: String?
     var subscriptionStatus: SubscriptionStatus?
@@ -39,6 +41,11 @@ final class AppState {
     var direct: Bool = false
     var symbols: String = ""
     var cliPath: String?
+    var tickerSort: String = "az"
+
+    var resolvedCLIPath: String? {
+        CLIRunner.resolveBinary(customPath: cliPath)
+    }
 
     let authService = AuthService()
 
@@ -58,6 +65,9 @@ final class AppState {
             symbols = s
         }
         cliPath = ud.string(forKey: Defaults.cliPath)
+        if let s = ud.string(forKey: Defaults.tickerSort) {
+            tickerSort = s
+        }
         if let arr = ud.stringArray(forKey: Defaults.availableAccounts) {
             availableAccounts = arr
         }
@@ -79,6 +89,7 @@ final class AppState {
         ud.set(direct, forKey: Defaults.direct)
         ud.set(symbols, forKey: Defaults.symbols)
         ud.set(cliPath, forKey: Defaults.cliPath)
+        ud.set(tickerSort, forKey: Defaults.tickerSort)
         ud.set(availableAccounts, forKey: Defaults.availableAccounts)
         if let data = try? JSONEncoder().encode(selectedAccounts) {
             ud.set(data, forKey: Defaults.selectedAccounts)
@@ -136,7 +147,7 @@ final class AppState {
         guard !isLoading else { return }
         if manual { consecutiveErrors = 0 }
         isLoading = true
-        defer { isLoading = false }
+        loadingTimeframes = Set(enabledTimeframes)
 
         // In broker mode, ensure we have a valid token before calling CLI.
         if !direct {
@@ -144,9 +155,13 @@ final class AppState {
                 try await authService.ensureValidToken()
             } catch is AuthError {
                 self.error = .authExpired("Login required")
+                isLoading = false
+                loadingTimeframes = []
                 return
             } catch {
                 self.error = .authExpired("Authentication error: \(error.localizedDescription)")
+                isLoading = false
+                loadingTimeframes = []
                 return
             }
 
@@ -163,6 +178,8 @@ final class AppState {
 
                     if info.status == .expired {
                         self.error = .subscriptionRequired("Your free trial has ended. Subscribe to continue.")
+                        isLoading = false
+                        loadingTimeframes = []
                         return
                     }
                 } catch {
@@ -181,45 +198,76 @@ final class AppState {
             nil
         }
 
-        let result = await CLIRunner.run(
-            customPath: cliPath,
-            direct: direct,
-            symbols: symbols.isEmpty ? nil : symbols,
-            account: accountFilter,
-            timeframes: enabledTimeframes
-        )
+        // Capture settings for concurrent use.
+        let path = cliPath
+        let isDirect = direct
+        let syms = symbols.isEmpty ? nil : symbols
+        let timeframes = enabledTimeframes
 
-        switch result {
-        case .success(var data):
-            // Filter to only enabled timeframes (CLI may return extras when no flag is passed).
-            data.timeframes = data.timeframes.filter { enabledTimeframes.contains($0.label) }
-            self.output = data
-            self.error = nil
-            self.lastUpdated = Date()
-            self.consecutiveErrors = 0
-            // Restart auto-refresh if it was stopped due to consecutive errors.
-            if manual && refreshTimer == nil {
-                restartTimer()
+        self.error = nil
+
+        // Run one CLI process per timeframe in parallel, streaming results as they arrive.
+        await withTaskGroup(of: (String, Result<TendiesOutput, AppError>).self) { group in
+            for tf in timeframes {
+                group.addTask {
+                    let result = await CLIRunner.run(
+                        customPath: path,
+                        direct: isDirect,
+                        symbols: syms,
+                        account: accountFilter,
+                        timeframe: tf
+                    )
+                    return (tf, result)
+                }
             }
-            // Update available accounts from CLI response (only on first load
-            // to avoid shrinking the list when a filter is active).
-            if !data.accounts.isEmpty && availableAccounts.isEmpty {
-                self.availableAccounts = data.accounts
-                for (i, label) in data.accounts.enumerated() {
-                    if i < data.accountIDs.count {
-                        accountIDsByLabel[label] = data.accountIDs[i]
+
+            for await (tf, result) in group {
+                switch result {
+                case .success(let data):
+                    // Merge this timeframe into the existing output, replacing stale data.
+                    if var existing = self.output {
+                        let newLabels = Set(data.timeframes.map(\.label))
+                        existing.timeframes.removeAll { newLabels.contains($0.label) }
+                        existing.timeframes.append(contentsOf: data.timeframes)
+                        let order = ["Day": 0, "Week": 1, "Month": 2]
+                        existing.timeframes.sort { (order[$0.label] ?? 99) < (order[$1.label] ?? 99) }
+                        self.output = existing
+                    } else {
+                        self.output = data
+                    }
+                    self.loadingTimeframes.remove(tf)
+                    self.lastUpdated = Date()
+                    self.consecutiveErrors = 0
+
+                    // Update available accounts from CLI response (only on first load).
+                    if !data.accounts.isEmpty && availableAccounts.isEmpty {
+                        self.availableAccounts = data.accounts
+                        for (i, label) in data.accounts.enumerated() {
+                            if i < data.accountIDs.count {
+                                accountIDsByLabel[label] = data.accountIDs[i]
+                            }
+                        }
+                        selectedAccounts = Set(data.accounts)
+                        persistSettings()
+                    }
+
+                case .failure(let err):
+                    self.loadingTimeframes.remove(tf)
+                    self.error = err
+                    consecutiveErrors += 1
+                    if consecutiveErrors >= 3 {
+                        logger.warning("3 consecutive errors — pausing auto-refresh")
+                        stopAutoRefresh()
                     }
                 }
-                selectedAccounts = Set(data.accounts)
-                persistSettings()
             }
-        case .failure(let err):
-            self.error = err
-            consecutiveErrors += 1
-            if consecutiveErrors >= 3 {
-                logger.warning("3 consecutive errors — pausing auto-refresh")
-                stopAutoRefresh()
-            }
+        }
+
+        isLoading = false
+
+        // Restart auto-refresh if it was stopped due to consecutive errors.
+        if manual && refreshTimer == nil && error == nil {
+            restartTimer()
         }
     }
 
@@ -294,7 +342,7 @@ final class AppState {
         refreshTimer = nil
     }
 
-    private func restartTimer() {
+    func restartTimer() {
         refreshTimer?.invalidate()
         let interval = TimeInterval(max(refreshMinutes, 1) * 60)
         refreshTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in

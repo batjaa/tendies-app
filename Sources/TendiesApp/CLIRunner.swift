@@ -22,7 +22,7 @@ enum AppError: Error, LocalizedError {
         case .schwabTokenExpired(let msg): return msg
         case .subscriptionRequired(let msg): return msg
         case .binaryNotFound: return "tendies CLI not found"
-        case .timeout: return "CLI timed out after 30s"
+        case .timeout: return "CLI timed out after 60s"
         case .generic(let msg): return msg
         }
     }
@@ -59,7 +59,7 @@ struct CLIRunner {
         direct: Bool = false,
         symbols: String? = nil,
         account: String? = nil,
-        timeframes: [String] = ["Day"]
+        timeframe: String = "Day"
     ) async -> Result<TendiesOutput, AppError> {
         guard let binaryPath = resolveBinary(customPath: customPath) else {
             return .failure(.binaryNotFound)
@@ -68,13 +68,7 @@ struct CLIRunner {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
 
-        var args = ["--json"]
-        // Pass timeframe flag when a single timeframe is selected.
-        if timeframes.count == 1 {
-            let flag = "--\(timeframes[0].lowercased())"
-            args.append(flag)
-        }
-        // When multiple or all are selected, no flag → CLI returns Day+Week+Month.
+        var args = ["--json", "--\(timeframe.lowercased())"]
         if direct {
             args.append("--direct")
         }
@@ -101,14 +95,14 @@ struct CLIRunner {
             return .failure(.generic("Failed to launch tendies: \(error.localizedDescription)"))
         }
 
-        // 30s timeout.
+        // 60s timeout.
         let timeoutItem = DispatchWorkItem {
             if process.isRunning {
                 logger.warning("Timeout — killing process")
                 process.terminate()
             }
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 30, execute: timeoutItem)
+        DispatchQueue.global().asyncAfter(deadline: .now() + 60, execute: timeoutItem)
 
         // Read both pipes concurrently on background threads to avoid pipe buffer
         // deadlock, then wait for the process to fully exit.

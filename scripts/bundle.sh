@@ -30,6 +30,17 @@ mkdir -p "${APP_BUNDLE}/Contents/Resources"
 cp "$BINARY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 cp Resources/Info.plist "${APP_BUNDLE}/Contents/"
 
+# Build app icon (.icns) if script and source are available
+if [[ -x "scripts/build-app-icon.sh" ]]; then
+    echo "Building AppIcon.icns..."
+    bash scripts/build-app-icon.sh || echo "Warning: failed to build AppIcon.icns; continuing without custom icon"
+fi
+
+# Copy icon into bundle if present
+if [[ -f "Resources/AppIcon.icns" ]]; then
+    cp Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
+fi
+
 # Ad-hoc codesign
 codesign --force --sign - "${APP_BUNDLE}"
 

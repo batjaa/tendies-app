@@ -132,9 +132,9 @@ struct ErrorView: View {
     private var errorCommand: String? {
         switch error {
         case .authExpired, .schwabTokenExpired:
-            return "tendies auth login"
+            return "tendies account link"
         case .binaryNotFound:
-            return "brew install batjaa/tools/tendies"
+            return "brew install batjaa/tap/tendies"
         default:
             return nil
         }

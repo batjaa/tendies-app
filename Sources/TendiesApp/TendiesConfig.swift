@@ -9,7 +9,7 @@ struct TendiesConfig: Codable {
         case brokerClientID = "broker_client_id"
     }
 
-    static let defaultBrokerURL = "https://tendies.batjaa.site"
+    static let defaultBrokerURL = "https://mytendies.app"
 
     static func load() -> TendiesConfig {
         let home = FileManager.default.homeDirectoryForCurrentUser

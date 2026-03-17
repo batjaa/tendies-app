@@ -41,7 +41,19 @@ if [[ -f "Resources/AppIcon.icns" ]]; then
     cp Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
 fi
 
-# Ad-hoc codesign
-codesign --force --sign - "${APP_BUNDLE}"
+# Codesign: use Developer ID if CODESIGN_IDENTITY is set, otherwise ad-hoc
+CODESIGN_IDENTITY="${CODESIGN_IDENTITY:--}"
 
+if [[ "$CODESIGN_IDENTITY" != "-" ]]; then
+    echo "Signing with: ${CODESIGN_IDENTITY}"
+    codesign --force --options runtime --sign "$CODESIGN_IDENTITY" \
+        "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+    codesign --force --options runtime --sign "$CODESIGN_IDENTITY" \
+        "${APP_BUNDLE}"
+else
+    echo "Ad-hoc signing (set CODESIGN_IDENTITY for Developer ID signing)"
+    codesign --force --sign - "${APP_BUNDLE}"
+fi
+
+codesign --verify --verbose "${APP_BUNDLE}"
 echo "Done: ${APP_BUNDLE}"

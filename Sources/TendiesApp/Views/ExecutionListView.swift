@@ -3,6 +3,7 @@ import SwiftUI
 struct ExecutionListView: View {
     let closes: [CloseTrade]
     let tickerType: String
+    var showDate: Bool = false
 
     private var executions: [Execution] {
         var result: [Execution] = []
@@ -53,9 +54,9 @@ struct ExecutionListView: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(executions.enumerated()), id: \.offset) { _, exec in
                 HStack(spacing: 0) {
-                    Text(formatTradeTime(exec.time))
+                    Text(formatTradeTime(exec.time, showDate: showDate))
                         .foregroundStyle(.tertiary)
-                        .frame(width: 36, alignment: .leading)
+                        .frame(width: showDate ? 58 : 36, alignment: .leading)
 
                     Text(" \(formatQuantity(exec.quantity, type: tickerType)) @ $\(String(format: "%.2f", exec.price))")
                         .foregroundStyle(.tertiary)

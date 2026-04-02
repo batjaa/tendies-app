@@ -3,6 +3,7 @@ import SwiftUI
 struct TickerListView: View {
     let tickers: [Ticker]
     var sortOrder: String = "az"
+    var timeframeLabel: String = "Day"
 
     private var sortedTickers: [Ticker] {
         if sortOrder == "pnl" {
@@ -14,7 +15,7 @@ struct TickerListView: View {
     var body: some View {
         VStack(spacing: 0) {
             ForEach(sortedTickers, id: \.symbol) { ticker in
-                TickerRowView(ticker: ticker)
+                TickerRowView(ticker: ticker, showDate: timeframeLabel != "Day")
             }
         }
         .background(Color.primary.opacity(0.02))
@@ -26,6 +27,7 @@ struct TickerListView: View {
 
 struct TickerRowView: View {
     let ticker: Ticker
+    var showDate: Bool = false
     @State private var isExpanded = false
     @State private var isHovered = false
 
@@ -76,7 +78,7 @@ struct TickerRowView: View {
             .onHover { hovering in isHovered = hovering }
 
             if isExpanded, let closes = ticker.closes {
-                ExecutionListView(closes: closes, tickerType: ticker.type)
+                ExecutionListView(closes: closes, tickerType: ticker.type, showDate: showDate)
             }
         }
     }

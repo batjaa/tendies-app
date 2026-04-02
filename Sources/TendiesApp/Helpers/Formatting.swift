@@ -53,22 +53,18 @@ func formatWholeNumber(_ n: Int) -> String {
 
 // MARK: - Time Formatting
 
-func formatTradeTime(_ isoString: String) -> String {
+func formatTradeTime(_ isoString: String, showDate: Bool = false) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let date = formatter.date(from: isoString) {
-        let tf = DateFormatter()
-        tf.dateFormat = "h:mm"
-        return tf.string(from: date)
+    var date = formatter.date(from: isoString)
+    if date == nil {
+        formatter.formatOptions = [.withInternetDateTime]
+        date = formatter.date(from: isoString)
     }
-    // Try without fractional seconds.
-    formatter.formatOptions = [.withInternetDateTime]
-    if let date = formatter.date(from: isoString) {
-        let tf = DateFormatter()
-        tf.dateFormat = "h:mm"
-        return tf.string(from: date)
-    }
-    return isoString
+    guard let date else { return isoString }
+    let tf = DateFormatter()
+    tf.dateFormat = showDate ? "M/d h:mm" : "h:mm"
+    return tf.string(from: date)
 }
 
 // MARK: - Side Formatting

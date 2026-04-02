@@ -93,7 +93,7 @@ struct PopoverView: View {
                     )
 
                     if expandedTimeframe == tf.label {
-                        TickerListView(tickers: tf.tickers, sortOrder: appState.tickerSort)
+                        TickerListView(tickers: tf.tickers, sortOrder: appState.tickerSort, timeframeLabel: tf.label)
                             .transition(.opacity)
                     }
                 } else if appState.loadingTimeframes.contains(label) {

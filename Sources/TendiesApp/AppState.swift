@@ -17,6 +17,8 @@ final class AppState {
         static let selectedAccounts = "selectedAccounts"
         static let availableAccounts = "availableAccounts"
         static let accountIDsByLabel = "accountIDsByLabel"
+        static let instrumentFilter = "instrumentFilter"
+        static let tickerGroup = "tickerGroup"
     }
 
     var output: TendiesOutput?
@@ -43,6 +45,8 @@ final class AppState {
     var symbols: String = ""
     var cliPath: String?
     var tickerSort: String = "az"
+    var instrumentFilter: Set<String> = ["equity", "option", "future"]
+    var tickerGroup: String = "ticker"  // "ticker" or "type"
 
     var resolvedCLIPath: String? {
         CLIRunner.resolveBinary(customPath: cliPath)
@@ -69,6 +73,13 @@ final class AppState {
         if let s = ud.string(forKey: Defaults.tickerSort) {
             tickerSort = s
         }
+        if let data = ud.data(forKey: Defaults.instrumentFilter),
+           let set = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            instrumentFilter = set
+        }
+        if let s = ud.string(forKey: Defaults.tickerGroup) {
+            tickerGroup = s
+        }
         if let arr = ud.stringArray(forKey: Defaults.availableAccounts) {
             availableAccounts = arr
         }
@@ -91,6 +102,10 @@ final class AppState {
         ud.set(symbols, forKey: Defaults.symbols)
         ud.set(cliPath, forKey: Defaults.cliPath)
         ud.set(tickerSort, forKey: Defaults.tickerSort)
+        if let data = try? JSONEncoder().encode(instrumentFilter) {
+            ud.set(data, forKey: Defaults.instrumentFilter)
+        }
+        ud.set(tickerGroup, forKey: Defaults.tickerGroup)
         ud.set(availableAccounts, forKey: Defaults.availableAccounts)
         if let data = try? JSONEncoder().encode(selectedAccounts) {
             ud.set(data, forKey: Defaults.selectedAccounts)

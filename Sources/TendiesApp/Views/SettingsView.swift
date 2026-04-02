@@ -10,11 +10,14 @@ struct SettingsView: View {
     @State private var isEditingCLIPath = false
     @State private var pendingCLIPath: String = ""
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var isAtBottom = false
     private let allTimeframes = ["Day", "Week", "Month"]
+    private let allInstruments = ["equity", "option", "future"]
+    private let instrumentLabels = ["equity": "Stocks", "option": "Options", "future": "Futures"]
     private let refreshIntervals = [1, 2, 5, 10, 30]
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 0) {
                 Button(action: {
                     applySymbolFilter()
@@ -119,6 +122,75 @@ struct SettingsView: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 100)
+                }
+                .padding(.bottom, 8)
+
+                settingRow("Group By") {
+                    Picker("", selection: Binding(
+                        get: { appState.tickerGroup },
+                        set: { newValue in
+                            appState.tickerGroup = newValue
+                            appState.persistSettings()
+                        }
+                    )) {
+                        Text("Ticker").tag("ticker")
+                        Text("Type").tag("type")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 120)
+                }
+                .padding(.bottom, 8)
+
+                HStack {
+                    Text("Instruments")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        ForEach(allInstruments, id: \.self) { inst in
+                            let isEnabled = appState.instrumentFilter.contains(inst)
+                            Button(action: { toggleInstrument(inst) }) {
+                                HStack(spacing: 5) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .stroke(isEnabled ? Color.blue : Color.primary.opacity(0.25), lineWidth: 1.5)
+                                            .frame(width: 14, height: 14)
+                                            .background(
+                                                isEnabled ? Color.blue : Color.clear,
+                                                in: RoundedRectangle(cornerRadius: 3)
+                                            )
+                                        if isEnabled {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundStyle(.white)
+                                        }
+                                    }
+                                    Text(instrumentLabels[inst] ?? inst)
+                                        .font(.system(size: 11.5, weight: .medium))
+                                        .foregroundStyle(isEnabled ? .primary : .secondary)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(
+                                    isEnabled
+                                        ? Color.blue.opacity(0.1)
+                                        : Color.primary.opacity(0.02)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .stroke(
+                                            isEnabled
+                                                ? Color.blue.opacity(0.25)
+                                                : Color.primary.opacity(0.06),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
                 .padding(.bottom, 12)
 
@@ -285,6 +357,31 @@ struct SettingsView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GeometryReader { content in
+                GeometryReader { scroll in
+                    Color.clear.preference(
+                        key: AtBottomKey.self,
+                        value: content.size.height <= scroll.size.height ||
+                               content.frame(in: .named("settingsScroll")).maxY <= scroll.size.height + 1
+                    )
+                }
+            })
+        }
+        .coordinateSpace(name: "settingsScroll")
+        .onPreferenceChange(AtBottomKey.self) { isAtBottom = $0 }
+        .overlay(alignment: .bottom) {
+            if !isAtBottom {
+                VStack(spacing: 0) {
+                    Spacer()
+                    LinearGradient(
+                        colors: [.clear, Color(nsColor: .windowBackgroundColor)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 28)
+                    .allowsHitTesting(false)
+                }
+            }
         }
     }
 
@@ -322,6 +419,16 @@ struct SettingsView: View {
         Task { await appState.refresh() }
     }
 
+    private func toggleInstrument(_ inst: String) {
+        if appState.instrumentFilter.contains(inst) {
+            guard appState.instrumentFilter.count > 1 else { return }
+            appState.instrumentFilter.remove(inst)
+        } else {
+            appState.instrumentFilter.insert(inst)
+        }
+        appState.persistSettings()
+    }
+
     private func openLogs() {
         // Open Console.app filtered to our subsystem.
         let proc = Process()
@@ -338,4 +445,9 @@ struct SettingsView: View {
             .tracking(1)
             .padding(.bottom, 6)
     }
+}
+
+private struct AtBottomKey: PreferenceKey {
+    static var defaultValue = true
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = nextValue() }
 }

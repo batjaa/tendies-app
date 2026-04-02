@@ -13,10 +13,12 @@ enum SubscriptionStatus: String, Codable {
 struct SubscriptionInfo: Codable {
     let status: SubscriptionStatus
     let trialEndsAt: String?
+    let proUntil: String?
 
     enum CodingKeys: String, CodingKey {
         case status
         case trialEndsAt = "trial_ends_at"
+        case proUntil = "pro_until"
     }
 }
 

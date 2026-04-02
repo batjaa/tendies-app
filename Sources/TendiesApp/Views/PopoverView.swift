@@ -29,6 +29,7 @@ struct PopoverView: View {
                 isAuthenticated: appState.isAuthenticated,
                 subscriptionStatus: appState.subscriptionStatus,
                 trialEndsAt: appState.trialEndsAt,
+                proUntil: appState.proUntil,
                 onLogout: { appState.logout() },
                 onManageSubscription: { Task { await openPortal() } }
             )

@@ -6,6 +6,7 @@ struct FooterView: View {
     var isAuthenticated: Bool = false
     var subscriptionStatus: SubscriptionStatus?
     var trialEndsAt: String?
+    var proUntil: String?
     var onLogout: (() -> Void)?
     var onManageSubscription: (() -> Void)?
 
@@ -22,6 +23,17 @@ struct FooterView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
                 Divider()
+            } else if let proText = proBadgeText {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 9))
+                    Text(proText)
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(.purple)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                Divider()
             }
             HStack {
                 if isLoading, lastUpdated != nil {
@@ -34,7 +46,7 @@ struct FooterView: View {
                         .foregroundStyle(.tertiary)
                 }
                 Spacer()
-                if subscriptionStatus == .active, let onManageSubscription {
+                if subscriptionStatus == .active, proUntil == nil, let onManageSubscription {
                     Button("Manage subscription") {
                         onManageSubscription()
                     }
@@ -60,6 +72,21 @@ struct FooterView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
+    }
+
+    private var proBadgeText: String? {
+        guard subscriptionStatus == .active, let proUntil else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var endDate = formatter.date(from: proUntil)
+        if endDate == nil {
+            formatter.formatOptions = [.withInternetDateTime]
+            endDate = formatter.date(from: proUntil)
+        }
+        guard let endDate else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: endDate).day ?? 0
+        if days <= 0 { return nil }
+        return "Pro access — \(days) \(days == 1 ? "day" : "days") remaining"
     }
 
     private var trialBadgeText: String? {

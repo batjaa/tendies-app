@@ -27,6 +27,7 @@ final class AppState {
     var loginError: String?
     var subscriptionStatus: SubscriptionStatus?
     var trialEndsAt: String?
+    var proUntil: String?
     private var consecutiveErrors = 0
 
     // Account selection (labels for display, IDs for CLI filtering).
@@ -175,6 +176,7 @@ final class AppState {
                     )
                     self.subscriptionStatus = info.status
                     self.trialEndsAt = info.trialEndsAt
+                    self.proUntil = info.proUntil
 
                     if info.status == .expired {
                         self.error = .subscriptionRequired("Your free trial has ended. Subscribe to continue.")

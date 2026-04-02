@@ -2,10 +2,21 @@ import Foundation
 
 // MARK: - P&L Formatting
 
+private let currencyFormatter: NumberFormatter = {
+    let f = NumberFormatter()
+    f.numberStyle = .decimal
+    f.minimumFractionDigits = 2
+    f.maximumFractionDigits = 2
+    f.groupingSeparator = ","
+    f.usesGroupingSeparator = true
+    return f
+}()
+
 func formatPnL(_ value: Double) -> String {
     let sign = value > 0 ? "+" : value < 0 ? "-" : ""
     let absVal = abs(value)
-    return "\(sign)$\(String(format: "%.2f", absVal))"
+    let num = currencyFormatter.string(from: NSNumber(value: absVal)) ?? String(format: "%.2f", absVal)
+    return "\(sign)$\(num)"
 }
 
 func formatPnLCompact(_ value: Double) -> String {

@@ -169,13 +169,12 @@ final class AppState {
         if !direct {
             do {
                 try await authService.ensureValidToken()
-            } catch is AuthError {
-                self.error = .authExpired("Login required")
-                isLoading = false
-                loadingTimeframes = []
-                return
             } catch {
-                self.error = .authExpired("Authentication error: \(error.localizedDescription)")
+                let message = error is AuthError
+                    ? "Login required"
+                    : "Authentication error: \(error.localizedDescription)"
+                self.error = .authExpired(message)
+                clearAuthedData()
                 isLoading = false
                 loadingTimeframes = []
                 return
@@ -271,6 +270,9 @@ final class AppState {
                 case .failure(let err):
                     self.loadingTimeframes.remove(tf)
                     self.error = err
+                    if case .authExpired = err {
+                        clearAuthedData()
+                    }
                     consecutiveErrors += 1
                     if consecutiveErrors >= 3 {
                         logger.warning("3 consecutive errors — pausing auto-refresh")
@@ -314,13 +316,20 @@ final class AppState {
 
     func logout() {
         KeychainService.deleteToken()
-        output = nil
+        clearAuthedData()
         error = nil
         lastUpdated = nil
         loginError = nil
-        subscriptionStatus = nil
-        trialEndsAt = nil
         stopAutoRefresh()
+    }
+
+    /// Clears cached data that must not be shown when auth is gone. Guards against
+    /// no-op writes so repeated auth-failure ticks don't churn @Observable observers.
+    private func clearAuthedData() {
+        if output != nil { output = nil }
+        if subscriptionStatus != nil { subscriptionStatus = nil }
+        if trialEndsAt != nil { trialEndsAt = nil }
+        if proUntil != nil { proUntil = nil }
     }
 
     func getCheckoutURL(plan: String) async throws -> String {
